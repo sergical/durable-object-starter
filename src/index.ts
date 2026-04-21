@@ -24,10 +24,7 @@ export default Sentry.withSentry(
 			// API routes → forward to the user's DO via fetch()
 			if (url.pathname.startsWith("/api/")) {
 				const res = await handleApi(request, env, url);
-				for (const [k, v] of Object.entries(cors())) {
-					res.headers.set(k, v);
-				}
-				return res;
+				return withCors(res);
 			}
 
 			// Everything else → static assets (the built React app)
@@ -89,4 +86,18 @@ function cors(): Record<string, string> {
 		"Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
 		"Access-Control-Allow-Headers": "Content-Type, x-user-id",
 	};
+}
+
+// Response headers from `stub.fetch()` are immutable in the Workers runtime,
+// so we clone into a new Response to attach CORS headers.
+function withCors(res: Response): Response {
+	const headers = new Headers(res.headers);
+	for (const [k, v] of Object.entries(cors())) {
+		headers.set(k, v);
+	}
+	return new Response(res.body, {
+		status: res.status,
+		statusText: res.statusText,
+		headers,
+	});
 }
