@@ -57,10 +57,16 @@ pnpm install
 cp .dev.vars.example .dev.vars
 # Edit .dev.vars → paste your ANTHROPIC_API_KEY and optional SENTRY_DSN
 
-# (Optional) Frontend-side secrets (read by Vite)
+# (Optional) Frontend-side secrets (read by Vite at build time)
 cp .env.example .env.local
-# Edit .env.local → paste your VITE_SENTRY_DSN (same DSN is fine — DSNs are public)
+# Edit .env.local →
+#   VITE_SENTRY_DSN    public DSN used by @sentry/react in the browser
+#   SENTRY_AUTH_TOKEN  auth token with project:releases scope (used to upload sourcemaps)
+#   SENTRY_ORG         your Sentry org slug
+#   SENTRY_PROJECT     your Sentry project slug
 ```
+
+Sourcemap upload is opt-in: when `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` are all set, `pnpm build` uploads sourcemaps to Sentry and deletes them from the deployed bundle. Missing any of them = plugin is skipped (no error).
 
 ### Develop
 
