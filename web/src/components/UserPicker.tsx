@@ -1,5 +1,14 @@
+import { CheckIcon, UserIcon } from "lucide-react";
 import { USERS, type User } from "@shared/users";
-import { cn } from "../lib/utils";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 type Props = {
 	selectedUserId: string;
@@ -7,23 +16,34 @@ type Props = {
 };
 
 export function UserPicker({ selectedUserId, onSelect }: Props) {
+	const current = USERS.find((u) => u.id === selectedUserId) ?? USERS[0]!;
+
 	return (
-		<div className="flex items-center gap-1.5">
-			{USERS.map((u) => (
-				<button
-					key={u.id}
-					onClick={() => onSelect(u)}
-					className={cn(
-						"flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition",
-						selectedUserId === u.id
-							? "border-violet-500 bg-violet-500/15 text-violet-200"
-							: "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200",
-					)}
-				>
-					<span className="text-base leading-none">{u.emoji}</span>
-					<span className="font-medium">{u.name}</span>
-				</button>
-			))}
-		</div>
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button variant="outline" size="sm" className="gap-2">
+					<span className="text-base leading-none">{current.emoji}</span>
+					<span>{current.name}</span>
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-48">
+				<DropdownMenuLabel className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+					<UserIcon className="size-3" />
+					Switch user
+				</DropdownMenuLabel>
+				<DropdownMenuSeparator />
+				{USERS.map((u) => (
+					<DropdownMenuItem
+						key={u.id}
+						onSelect={() => onSelect(u)}
+						className="gap-2"
+					>
+						<span className="text-base leading-none">{u.emoji}</span>
+						<span className="flex-1">{u.name}</span>
+						{u.id === selectedUserId && <CheckIcon className="size-4" />}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

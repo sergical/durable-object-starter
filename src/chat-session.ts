@@ -8,6 +8,9 @@ import {
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { chatTools } from "./tools";
 
+// Anthropic model — bump to `claude-sonnet-4-6` for stronger reasoning.
+const MODEL_ID = "claude-haiku-4-5";
+
 /**
  * One Durable Object per user. Owns that user's conversations + messages
  * in the DO's embedded SQLite storage. All AI SDK calls happen here.
@@ -155,7 +158,7 @@ export class ChatSession extends DurableObject<Env> {
 		const anthropic = createAnthropic({ apiKey: this.env.ANTHROPIC_API_KEY });
 
 		const result = streamText({
-			model: anthropic("claude-3-5-haiku-latest"),
+			model: anthropic(MODEL_ID),
 			system: `You are a helpful, witty assistant. You have access to several tools:
 - get_weather: fetch mock weather data for any city
 - get_current_time: get the current UTC time

@@ -5,8 +5,9 @@ A minimal full-stack starter for building AI chat apps on Cloudflare Workers:
 - **[Cloudflare Workers](https://developers.cloudflare.com/workers/)** — edge runtime
 - **[Durable Objects](https://developers.cloudflare.com/durable-objects/)** — one DO per user, storing conversations + messages in embedded SQLite
 - **[AI SDK v6](https://ai-sdk.dev/)** — `streamText` with tool calls, streaming UI messages
-- **[@ai-sdk/anthropic](https://ai-sdk.dev/providers/ai-sdk-providers/anthropic)** — Claude 3.5 Haiku
-- **React + Vite + Tailwind v4** — served as [static assets](https://developers.cloudflare.com/workers/static-assets/) from the same Worker
+- **[AI SDK Elements](https://elements.ai-sdk.dev/)** — `<Conversation>`, `<Message>`, `<PromptInput>`, `<Tool>` (shadcn-registry components)
+- **[@ai-sdk/anthropic](https://ai-sdk.dev/providers/ai-sdk-providers/anthropic)** — Claude Haiku 4.5 (switchable to Sonnet 4.6 via one constant in `src/chat-session.ts`)
+- **React 19 + Vite + Tailwind v4 + shadcn/ui** — served as [static assets](https://developers.cloudflare.com/workers/static-assets/) from the same Worker
 - **Multi-user demo** — hardcoded user picker (Alice 🦊 / Bob 🐻 / Charlie 🐼), each with their own isolated conversation history
 
 ## Architecture
@@ -98,11 +99,13 @@ Secrets set via the dashboard or `wrangler secret put` persist across deploys �
 ├── web/                     # React + Vite app
 │   ├── index.html
 │   └── src/
-│       ├── App.tsx          # Layout, user picker, conversation sidebar
+│       ├── App.tsx                  # Layout, user picker, conversation sidebar
 │       ├── components/
-│       │   ├── Chat.tsx            # useChat + DefaultChatTransport
+│       │   ├── Chat.tsx             # useChat + DefaultChatTransport + AI Elements
 │       │   ├── ConversationList.tsx
-│       │   └── UserPicker.tsx
+│       │   ├── UserPicker.tsx
+│       │   ├── ai-elements/         # shadcn-registry components from elements.ai-sdk.dev
+│       │   └── ui/                  # shadcn primitives
 │       └── lib/api.ts
 ├── wrangler.jsonc           # DO binding, assets binding, migrations
 ├── vite.config.ts
