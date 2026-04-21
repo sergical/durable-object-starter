@@ -61,11 +61,9 @@ async function handleApi(
 	const innerUrl = new URL(url);
 	innerUrl.pathname = url.pathname.replace(/^\/api/, "");
 
-	const innerRequest = new Request(innerUrl.toString(), {
-		method: request.method,
-		headers: request.headers,
-		body: request.body,
-	});
+	// Pass the original request as the init — this correctly handles method,
+	// headers, and body (including skipping body for GET/HEAD).
+	const innerRequest = new Request(innerUrl.toString(), request);
 
 	return stub.fetch(innerRequest);
 }
