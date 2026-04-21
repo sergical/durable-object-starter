@@ -129,11 +129,11 @@ function ChatInner({
 				<PromptInput onSubmit={handleSubmit}>
 					<PromptInputBody>
 						<PromptInputTextarea placeholder="Message Claude…" />
-						<PromptInputFooter>
-							<div />
-							<PromptInputSubmit status={status} />
-						</PromptInputFooter>
 					</PromptInputBody>
+					<PromptInputFooter>
+						<div />
+						<PromptInputSubmit status={status} />
+					</PromptInputFooter>
 				</PromptInput>
 			</div>
 		</div>
