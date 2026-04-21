@@ -1,0 +1,40 @@
+{
+	"name": "durable-object-starter",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "pnpm build && wrangler deploy",
+		"dev": "concurrently -n vite,worker -c cyan,magenta \"vite\" \"wrangler dev\"",
+		"dev:worker": "wrangler dev",
+		"dev:web": "vite",
+		"build": "vite build",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit",
+		"start": "wrangler dev",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "^4.2.4",
+		"@types/node": "^25.6.0",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.1",
+		"concurrently": "^9.2.1",
+		"tailwindcss": "^4.2.4",
+		"typescript": "^5.5.2",
+		"vite": "^8.0.9",
+		"wrangler": "^4.84.1"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^3.0.71",
+		"@ai-sdk/react": "^3.0.170",
+		"ai": "^6.0.168",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"lucide-react": "^1.8.0",
+		"react": "^19.2.5",
+		"react-dom": "^19.2.5",
+		"streamdown": "^2.5.0",
+		"tailwind-merge": "^3.5.0",
+		"zod": "^4.3.6"
+	}
+}
