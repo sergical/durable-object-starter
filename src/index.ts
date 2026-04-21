@@ -1,10 +1,18 @@
+import * as Sentry from "@sentry/cloudflare";
 import { ChatSession } from "./chat-session";
 import { USERS, isValidUserId } from "./shared/users";
 import type { UIMessage } from "ai";
 
 export { ChatSession };
 
-export default {
+export default Sentry.withSentry(
+	(env: Env) => ({
+		dsn: env.SENTRY_DSN,
+		tracesSampleRate: 1.0,
+		sendDefaultPii: true,
+		enabled: !!env.SENTRY_DSN,
+	}),
+	{
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
 
@@ -25,7 +33,8 @@ export default {
 		// Everything else → static assets (the built React app)
 		return env.ASSETS.fetch(request);
 	},
-} satisfies ExportedHandler<Env>;
+	} satisfies ExportedHandler<Env>,
+);
 
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
 	// GET /api/users → hardcoded user list

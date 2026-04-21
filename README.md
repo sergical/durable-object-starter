@@ -8,6 +8,7 @@ A minimal full-stack starter for building AI chat apps on Cloudflare Workers:
 - **[AI SDK Elements](https://elements.ai-sdk.dev/)** — `<Conversation>`, `<Message>`, `<PromptInput>`, `<Tool>` (shadcn-registry components)
 - **[@ai-sdk/anthropic](https://ai-sdk.dev/providers/ai-sdk-providers/anthropic)** — Claude Haiku 4.5 (switchable to Sonnet 4.6 via one constant in `src/chat-session.ts`)
 - **React 19 + Vite + Tailwind v4 + shadcn/ui** — served as [static assets](https://developers.cloudflare.com/workers/static-assets/) from the same Worker
+- **[Sentry](https://sentry.io/)** — end-to-end tracing: frontend (`@sentry/react`) → Worker (`withSentry`) → Durable Object (`instrumentDurableObjectWithSentry`), with distributed trace propagation
 - **Multi-user demo** — hardcoded user picker (Alice 🦊 / Bob 🐻 / Charlie 🐼), each with their own isolated conversation history
 
 ## Architecture
@@ -52,9 +53,13 @@ The assistant has four demo tools wired up in `src/tools.ts`:
 ```bash
 pnpm install
 
-# Local dev secrets
+# Worker-side secrets (read by wrangler dev)
 cp .dev.vars.example .dev.vars
-# Edit .dev.vars and paste your ANTHROPIC_API_KEY
+# Edit .dev.vars → paste your ANTHROPIC_API_KEY and optional SENTRY_DSN
+
+# (Optional) Frontend-side secrets (read by Vite)
+cp .env.example .env.local
+# Edit .env.local → paste your VITE_SENTRY_DSN (same DSN is fine — DSNs are public)
 ```
 
 ### Develop
@@ -77,8 +82,9 @@ pnpm cf-typegen   # regenerate worker-configuration.d.ts after wrangler.jsonc ch
 ### Deploy
 
 ```bash
-# Set your secret in Cloudflare (once)
+# Set your secrets in Cloudflare (once)
 npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put SENTRY_DSN  # optional
 
 # Ship it
 pnpm deploy

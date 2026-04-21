@@ -1,1 +1,2 @@
 ANTHROPIC_API_KEY=sk-ant-your-key-here
+SENTRY_DSN=https://your-public-key@o0.ingest.sentry.io/0

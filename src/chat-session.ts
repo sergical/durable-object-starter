@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import * as Sentry from "@sentry/cloudflare";
 import {
 	streamText,
 	stepCountIs,
@@ -15,7 +16,7 @@ const MODEL_ID = "claude-haiku-4-5";
  * One Durable Object per user. Owns that user's conversations + messages
  * in the DO's embedded SQLite storage. All AI SDK calls happen here.
  */
-export class ChatSession extends DurableObject<Env> {
+class ChatSessionClass extends DurableObject<Env> {
 	private sql: SqlStorage;
 
 	constructor(ctx: DurableObjectState, env: Env) {
@@ -184,6 +185,16 @@ Use tools proactively when the user's question can benefit from them. Be concise
 		});
 	}
 }
+
+export const ChatSession = Sentry.instrumentDurableObjectWithSentry(
+	(env: Env) => ({
+		dsn: env.SENTRY_DSN,
+		tracesSampleRate: 1.0,
+		sendDefaultPii: true,
+		enabled: !!env.SENTRY_DSN,
+	}),
+	ChatSessionClass,
+);
 
 function extractText(message: UIMessage): string {
 	if (!message.parts) return "";
