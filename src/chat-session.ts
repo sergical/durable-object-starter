@@ -15,6 +15,9 @@ const MODEL_ID = "claude-haiku-4-5";
 /**
  * One Durable Object per user. Owns that user's conversations + messages
  * in the DO's embedded SQLite storage. All AI SDK calls happen here.
+ *
+ * Exposes a standard `fetch(request)` handler (not RPC methods) so that
+ * Sentry trace headers propagate naturally from the Worker.
  */
 class ChatSessionClass extends DurableObject<Env> {
 	private sql: SqlStorage;
@@ -47,12 +50,65 @@ class ChatSessionClass extends DurableObject<Env> {
 	}
 
 	// -----------------------------------------------------------------------
-	// Conversation CRUD
+	// Fetch handler — routes to the right internal method
+	// URL convention: /conversations, /conversations/:id, /conversations/:id/messages, /chat
+	// -----------------------------------------------------------------------
+	override async fetch(request: Request): Promise<Response> {
+		const url = new URL(request.url);
+		const { pathname } = url;
+		const method = request.method;
+
+		try {
+			if (pathname === "/conversations" && method === "GET") {
+				return json(this.listConversations());
+			}
+			if (pathname === "/conversations" && method === "POST") {
+				const body = await safeJson<{ title?: string }>(request);
+				return json(this.createConversation(body?.title));
+			}
+
+			const msgMatch = pathname.match(/^\/conversations\/([^/]+)\/messages$/);
+			if (msgMatch && method === "GET") {
+				return json(this.getMessages(msgMatch[1]!));
+			}
+
+			const delMatch = pathname.match(/^\/conversations\/([^/]+)$/);
+			if (delMatch && method === "DELETE") {
+				this.deleteConversation(delMatch[1]!);
+				return json({ ok: true });
+			}
+
+			if (pathname === "/chat" && method === "POST") {
+				const body = await safeJson<{
+					conversationId?: string;
+					messages?: UIMessage[];
+				}>(request);
+				if (!body?.conversationId || !Array.isArray(body.messages)) {
+					return json(
+						{ error: "conversationId and messages[] are required" },
+						400,
+					);
+				}
+				return this.chat(body.conversationId, body.messages);
+			}
+
+			return json({ error: "Not found" }, 404);
+		} catch (err) {
+			console.error("[ChatSession.fetch] error:", err);
+			return json({ error: (err as Error).message }, 500);
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Internal handlers
 	// -----------------------------------------------------------------------
 
-	async listConversations(): Promise<
-		Array<{ id: string; title: string; createdAt: number; updatedAt: number }>
-	> {
+	private listConversations(): Array<{
+		id: string;
+		title: string;
+		createdAt: number;
+		updatedAt: number;
+	}> {
 		const rows = this.sql
 			.exec(
 				`SELECT id, title, created_at, updated_at FROM conversations ORDER BY updated_at DESC`,
@@ -66,12 +122,12 @@ class ChatSessionClass extends DurableObject<Env> {
 		}));
 	}
 
-	async createConversation(title?: string): Promise<{
+	private createConversation(title?: string): {
 		id: string;
 		title: string;
 		createdAt: number;
 		updatedAt: number;
-	}> {
+	} {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 		const finalTitle = title?.trim() || "New chat";
@@ -85,12 +141,12 @@ class ChatSessionClass extends DurableObject<Env> {
 		return { id, title: finalTitle, createdAt: now, updatedAt: now };
 	}
 
-	async deleteConversation(id: string): Promise<void> {
+	private deleteConversation(id: string): void {
 		this.sql.exec(`DELETE FROM messages WHERE conversation_id = ?`, id);
 		this.sql.exec(`DELETE FROM conversations WHERE id = ?`, id);
 	}
 
-	async getMessages(conversationId: string): Promise<UIMessage[]> {
+	private getMessages(conversationId: string): UIMessage[] {
 		const rows = this.sql
 			.exec(
 				`SELECT id, role, parts_json FROM messages WHERE conversation_id = ? ORDER BY created_at ASC`,
@@ -112,8 +168,6 @@ class ChatSessionClass extends DurableObject<Env> {
 	}
 
 	private saveMessages(conversationId: string, messages: UIMessage[]): void {
-		// Replace the entire history for this conversation — simplest and
-		// correctly handles the AI SDK's persistence contract.
 		this.sql.exec(`DELETE FROM messages WHERE conversation_id = ?`, conversationId);
 		const now = Date.now();
 		for (let i = 0; i < messages.length; i++) {
@@ -124,7 +178,7 @@ class ChatSessionClass extends DurableObject<Env> {
 				conversationId,
 				m.role,
 				JSON.stringify(m.parts ?? []),
-				now + i, // preserve order
+				now + i,
 			);
 		}
 		this.sql.exec(
@@ -133,7 +187,6 @@ class ChatSessionClass extends DurableObject<Env> {
 			conversationId,
 		);
 
-		// If this is the first user message and title is still default, auto-title it.
 		const firstUser = messages.find((m) => m.role === "user");
 		if (firstUser) {
 			const text = extractText(firstUser).slice(0, 60).trim();
@@ -147,13 +200,12 @@ class ChatSessionClass extends DurableObject<Env> {
 		}
 	}
 
-	// -----------------------------------------------------------------------
-	// Chat — streams a UI message response
-	// -----------------------------------------------------------------------
-
-	async chat(conversationId: string, messages: UIMessage[]): Promise<Response> {
+	private async chat(
+		conversationId: string,
+		messages: UIMessage[],
+	): Promise<Response> {
 		if (!this.conversationExists(conversationId)) {
-			return new Response("Conversation not found", { status: 404 });
+			return json({ error: "Conversation not found" }, 404);
 		}
 
 		const anthropic = createAnthropic({ apiKey: this.env.ANTHROPIC_API_KEY });
@@ -183,7 +235,6 @@ Use tools proactively when the user's question can benefit from them. Be concise
 		return result.toUIMessageStreamResponse({
 			originalMessages: messages,
 			onFinish: ({ messages: finalMessages }) => {
-				// Persist the full updated message list after the response completes.
 				try {
 					this.saveMessages(conversationId, finalMessages as UIMessage[]);
 				} catch (err) {
@@ -200,10 +251,28 @@ export const ChatSession = Sentry.instrumentDurableObjectWithSentry(
 		tracesSampleRate: 1.0,
 		sendDefaultPii: true,
 		enabled: !!env.SENTRY_DSN,
+		debug: true,
 		integrations: [Sentry.vercelAIIntegration()],
 	}),
 	ChatSessionClass,
 );
+
+// ---------- helpers ----------
+
+function json(data: unknown, status = 200): Response {
+	return new Response(JSON.stringify(data), {
+		status,
+		headers: { "Content-Type": "application/json" },
+	});
+}
+
+async function safeJson<T>(request: Request): Promise<T | null> {
+	try {
+		return (await request.json()) as T;
+	} catch {
+		return null;
+	}
+}
 
 function extractText(message: UIMessage): string {
 	if (!message.parts) return "";
