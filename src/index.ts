@@ -11,6 +11,7 @@ export default Sentry.withSentry(
 		tracesSampleRate: 1.0,
 		sendDefaultPii: true,
 		enabled: !!env.SENTRY_DSN,
+		integrations: [Sentry.vercelAIIntegration()],
 	}),
 	{
 	async fetch(request: Request, env: Env): Promise<Response> {

@@ -170,6 +170,14 @@ Use tools proactively when the user's question can benefit from them. Be concise
 			messages: await convertToModelMessages(messages),
 			tools: chatTools,
 			stopWhen: stepCountIs(5),
+			// Sentry Vercel AI integration — emits agent/tool/token spans.
+			experimental_telemetry: {
+				isEnabled: true,
+				recordInputs: true,
+				recordOutputs: true,
+				functionId: "chat-session.chat",
+				metadata: { conversationId },
+			},
 		});
 
 		return result.toUIMessageStreamResponse({
@@ -192,6 +200,7 @@ export const ChatSession = Sentry.instrumentDurableObjectWithSentry(
 		tracesSampleRate: 1.0,
 		sendDefaultPii: true,
 		enabled: !!env.SENTRY_DSN,
+		integrations: [Sentry.vercelAIIntegration()],
 	}),
 	ChatSessionClass,
 );
