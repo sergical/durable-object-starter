@@ -208,6 +208,8 @@ class ChatSessionClass extends DurableObject<Env> {
 			return json({ error: "Conversation not found" }, 404);
 		}
 
+		Sentry.setConversationId(conversationId);
+
 		const anthropic = createAnthropic({ apiKey: this.env.ANTHROPIC_API_KEY });
 
 		const result = streamText({
